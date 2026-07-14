@@ -1,0 +1,23 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: conftest verify
+        run: |
+          docker run --rm -v "$PWD:/project" -w /project \
+            openpolicyagent/conftest:v0.68.2 verify --policy policy/
+      - name: collect-facts smoke (self)
+        run: |
+          ./scripts/collect-facts.sh . | tee /tmp/facts.json
+          docker run --rm -v "$PWD/policy:/policy:ro" -v /tmp/facts.json:/facts.json:ro \
+            openpolicyagent/conftest:v0.68.2 test --policy /policy /facts.json
